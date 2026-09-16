@@ -1,0 +1,106 @@
+Arquitectura General del Sistema
+Data Source: WebSocket público de Binance (btcusdt@aggTrade y ethusdt@aggTrade).
+
+Message Broker: Redpanda (100% compatible con Kafka, binario en C++, vuela en local sin pelearse con Zookeeper o JVM).
+
+Stream Processor: Python asíncrono con Bytewax o un consumidor concurrente con aiokafka para agregación en memoria (ventanas deslizantes de 1s, 5s y 1m: VWAP, volatilidad, medias móviles).
+
+Storage OLAP: ClickHouse (inserciones por micro-batches para no saturar memoria; tabla con motor MergeTree).
+
+Backend Gateway: FastAPI (sirve histórico desde ClickHouse vía REST y retransmite el streaming procesado por WebSocket).
+
+Frontend: Next.js (TypeScript) con TailwindCSS y gráficos interactivos de Lightweight Charts (TradingView).
+
+Orquestación: docker-compose.yml multi-contenedor unificado.
+
+Fase 1: Infraestructura Local y Schemas (Docker)
+El primer objetivo es levantar la columna vertebral con Docker Compose sin escribir todavía lógica de negocio.
+
+Redpanda: Levanta un nodo de Redpanda con consola web integrada (redpanda-console) en el puerto 8080 para monitorizar topics y throughput visualmente.
+
+ClickHouse: Despliega el contenedor oficial de ClickHouse Server y monta un volumen persistente.
+
+Modelado de Tablas OLAP:
+
+Tabla crypto_trades_raw: Guarda ticks brutos (timestamp, symbol, price, quantity, is_buyer_maker). Motor MergeTree() particionado por día y ordenado por (symbol, timestamp).
+
+Tabla crypto_candles_1m: Velas agregadas OHLCV precalculadas.
+
+Fase 2: Ingesta en Streaming (Producer)
+Un servicio ligero e indestructible en Python para alimentar el broker.
+
+Conexión WebSocket: Conexión asíncrona mediante websockets o aiohttp al endpoint público de Binance.
+
+Validación de Payloads: Pydantic para tipar el payload recibido antes de mandarlo al bus.
+
+Publicación en Redpanda:
+
+Uso de aiokafka para publicar en el topic raw-crypto-trades.
+
+Implementa reconexión automática con exponential backoff si el WebSocket de Binance cae.
+
+Fase 3: Procesamiento en Streaming y Persistencia (Engine)
+Aquí demuestras que sabes lidiar con volumen y no cometer el error junior de hacer INSERT fila por fila en bases de datos analíticas.
+
+Consumer de Streaming: Servicio Python que lee de raw-crypto-trades.
+
+Agregaciones en Ventanas Temporales:
+
+Cálculo de VWAP (Volume-Weighted Average Price) en tiempo real.
+
+Detección de spikes de volumen o anomalías de volatilidad usando ventanas deslizantes de Pandas o NumPy en memoria (aprovechando tu base en series temporales).
+
+Micro-Batching a ClickHouse:
+
+Acumula eventos en memoria en lotes de 1.000 filas o cada 2 segundos.
+
+Inserción en bloque a ClickHouse usando el driver oficial clickhouse-connect.
+
+Topic de Salida: Publica las métricas calculadas en un segundo topic: processed-crypto-metrics.
+
+Fase 4: Backend API & WebSocket Hub (FastAPI)
+Tu terreno conocido, pero elevado al siguiente nivel con soporte dual (REST + WebSockets).
+
+Capa REST para Datos Históricos:
+
+GET /api/v1/metrics/history?symbol=BTCUSDT&interval=1m: Consulta parametrizada ultra-rápida a ClickHouse.
+
+GET /api/v1/health: Chequeo de conexiones a Redpanda y ClickHouse.
+
+Broadcaster WebSocket:
+
+WS /ws/live/{symbol}: Endpoint que mantiene conexiones activas con los clientes del frontend.
+
+Un background worker interno en FastAPI escucha el topic processed-crypto-metrics y hace broadcast concurrente a las conexiones cliente activas.
+
+Fase 5: Frontend Full Stack (Next.js + TradingView)
+El escaparate que hace que el proyecto se venda solo en 10 segundos.
+
+Setup: Next.js con TypeScript y TailwindCSS.
+
+Dashboard Layout:
+
+Selector de pares (BTC/USDT, ETH/USDT).
+
+Ticker superior con métricas clave (Precio actual, Variación 24h, VWAP actual, Latencia del socket en ms).
+
+Gráficos Reactivos:
+
+Integra la librería @tradingview/lightweight-charts.
+
+Conéctala al endpoint WebSocket de FastAPI: cada tick actualiza la última vela o el gráfico de líneas en tiempo real sin recargar la página.
+
+Tabla de Historial: Últimas transacciones grandes (ballenas) detectadas por el pipeline.
+
+Fase 6: MLOps/DevOps y README para Tech Leads
+Lo que te hace destacar en entrevistas técnicas:
+
+Métricas y Profiling: Muestra en el README el throughput alcanzado (ej. "Capacidad de ingesta probada: +3.000 eventos/segundo con latencia sub-50ms").
+
+Buenas Prácticas:
+
+Variables de entorno gestionadas con .env y tipadas con Pydantic Settings.
+
+Linters y formateo estricto (ruff, mypy).
+
+GIF demostrativo: Captura de pantalla de la interfaz con los gráficos moviéndose en vivo junto a los logs de Redpanda procesando mensajes.
