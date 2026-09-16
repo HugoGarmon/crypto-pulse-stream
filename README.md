@@ -158,7 +158,7 @@ Cada transacción individual agregada de Binance es validada, enriquecida y seri
 
 **Hugo Garmón**
 - GitHub: [@HugoGarmon](https://github.com/HugoGarmon)
-- LinkedIn: [Hugo Garmón](https://www.linkedin.com/)
+- LinkedIn: [Hugo Garmón](https://www.linkedin.com/in/hugo-garmon-dev/)
 
 ---
 
