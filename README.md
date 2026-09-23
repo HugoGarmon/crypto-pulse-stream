@@ -71,8 +71,6 @@ flowchart LR
 
 ```text
 crypto-pulse-stream/
-├── .github/
-│   └── workflows/ci.yml         # CI/CD: Linters (ruff) y validación de tipos
 ├── docker-compose.yml           # Orquestación unificada de infraestructura y servicios
 ├── .env.example                 # Variables de entorno documentadas
 ├── .gitignore                   # Exclusión estricta de secretos y volúmenes
@@ -80,14 +78,24 @@ crypto-pulse-stream/
 ├── infra/
 │   └── clickhouse/
 │       └── init_db.sql          # DDL de tablas MergeTree y esquemas analíticos
+├── tests/                       # Pruebas automatizadas (Engine & Gateway)
 └── services/
-    └── producer/                # Microservicio de ingesta Binance -> Redpanda
+    ├── producer/                # Ingesta Binance WebSocket -> Redpanda
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── src/ (main.py, config.py, schemas.py)
+    ├── engine/                  # Motor analítico, VWAP, micro-batching ClickHouse
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── src/ (main.py, aggregator.py, storage.py, config.py, schemas.py)
+    ├── gateway/                 # API REST FastAPI + WebSocket Broadcaster
+    │   ├── Dockerfile
+    │   ├── requirements.txt
+    │   └── src/ (main.py, broadcaster.py, db.py, config.py, schemas.py)
+    └── frontend/                # Next.js + TailwindCSS + TradingView Lightweight Charts
         ├── Dockerfile
-        ├── requirements.txt
-        └── src/
-            ├── main.py          # Worker asíncrono con exponential backoff
-            ├── config.py        # Configuración tipada con Pydantic Settings
-            └── schemas.py       # Modelos de datos estrictos (Pydantic v2)
+        ├── package.json
+        └── src/ (app/, components/, types/)
 ```
 
 ---
@@ -112,14 +120,11 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-### 4. Monitorizar el flujo en tiempo real
-- **Redpanda Console**: Abre tu navegador en [http://localhost:8080](http://localhost:8080) para inspeccionar los topics, particiones y tasa de mensajes en vivo.
-- **ClickHouse HTTP**: Accesible en `http://localhost:8123` (Nativo en `9000`).
-
-Para ver los logs del productor ingiriendo datos de Binance:
-```bash
-docker compose logs -f producer
-```
+### 4. Acceso y Monitorización
+- **Frontend Trading Terminal**: [http://localhost:3000](http://localhost:3000) (Dashboard con gráficos reactivos a 60 FPS, ticker en vivo y alertas de ballenas).
+- **FastAPI Interactive Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI para queries analíticas y endpoints REST).
+- **Redpanda Console**: [http://localhost:8080](http://localhost:8080) (Inspección de topics `raw-crypto-trades` y `processed-crypto-metrics`, particiones y throughput).
+- **ClickHouse HTTP**: `http://localhost:8123` (Nativo en `9000`).
 
 ---
 
@@ -147,9 +152,9 @@ Cada transacción individual agregada de Binance es validada, enriquecida y seri
 - [x] **Fase 0: Setup Inicial del Repositorio** (Git, Gitignore, `.env.example`, estándares PEP 8 con `ruff`).
 - [x] **Fase 1: Infraestructura Base** (Redpanda cluster, Redpanda Console :8080, ClickHouse OLAP y tablas `MergeTree`).
 - [x] **Fase 2: Ingesta en Streaming Resiliente** (Producer asíncrono con WebSockets de Binance, tipado Pydantic v2, reconexión automática y particionado por par en Redpanda).
-- [ ] **Fase 3: Stream Processor & Persistencia OLAP** (Cálculo de VWAP en memoria, ventanas deslizantes de 1m, detección de ballenas y micro-batching a ClickHouse).
-- [ ] **Fase 4: Backend API & WebSocket Gateway** (FastAPI REST para histórico + WebSocket broadcaster).
-- [ ] **Fase 5: Frontend Dashboard en Tiempo Real** (Next.js, TailwindCSS y TradingView Lightweight Charts).
+- [x] **Fase 3: Stream Processor & Persistencia OLAP** (Cálculo de VWAP en memoria, ventanas de velas 1m, detección de ballenas y micro-batching a ClickHouse).
+- [x] **Fase 4: Backend API & WebSocket Gateway** (FastAPI REST para histórico + WebSocket broadcaster en tiempo real).
+- [x] **Fase 5: Frontend Dashboard en Tiempo Real** (Next.js 14, TailwindCSS y TradingView Lightweight Charts con actualización tick-a-tick a 60 FPS).
 - [ ] **Fase 6: Benchmarking & CI/CD** (Pruebas de estrés +3.000 ops/sec y GitHub Actions).
 
 ---

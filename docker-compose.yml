@@ -104,3 +104,71 @@ services:
       redpanda:
         condition: service_healthy
     restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 5. Stream Engine: Processing, Real-Time VWAP & ClickHouse OLAP Micro-Batching
+  # ---------------------------------------------------------------------------
+  engine:
+    build:
+      context: ./services/engine
+      dockerfile: Dockerfile
+    container_name: crypto_engine
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+    networks:
+      - crypto_net
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 6. Backend Gateway: FastAPI REST & Real-Time WebSocket Hub
+  # ---------------------------------------------------------------------------
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: crypto_gateway
+    env_file:
+      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: 8123
+    ports:
+      - "8000:8000"
+    networks:
+      - crypto_net
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # 7. Frontend Dashboard: Next.js + TradingView Lightweight Charts
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./services/frontend
+      dockerfile: Dockerfile
+    container_name: crypto_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_WS_URL: ws://localhost:8000
+    ports:
+      - "3000:3000"
+    networks:
+      - crypto_net
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
