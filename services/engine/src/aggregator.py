@@ -158,9 +158,7 @@ class StreamAggregator:
         latency_ms = max(0.0, float(now_ms - trade.timestamp))
 
         low_val = (
-            self.session_low[symbol]
-            if self.session_low[symbol] != float("inf")
-            else trade.price
+            self.session_low[symbol] if self.session_low[symbol] != float("inf") else trade.price
         )
 
         ticker_update = TickerUpdate(

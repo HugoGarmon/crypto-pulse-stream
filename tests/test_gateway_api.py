@@ -17,7 +17,8 @@ from fastapi.testclient import TestClient
 from main import app
 from schemas import CandleResponse, SystemStatsResponse, WhaleResponse
 
-# Mock del worker Kafka para pruebas unitarias de la API REST
+# Mock del worker Kafka y conexión DB para pruebas unitarias de la API REST
+db.connect = MagicMock()  # type: ignore
 worker.start = AsyncMock()  # type: ignore
 worker.stop = AsyncMock()  # type: ignore
 

@@ -42,44 +42,50 @@ class ClickHouseStorage:
     def add_trade(self, trade: CryptoTrade) -> None:
         """Agrega un trade bruto al buffer de inserción por lotes."""
         dt = datetime.fromtimestamp(trade.timestamp / 1000.0, tz=UTC)
-        self.trades_buffer.append([
-            dt,
-            trade.symbol,
-            trade.price,
-            trade.quantity,
-            trade.volume_usd,
-            1 if trade.is_buyer_maker else 0,
-            trade.trade_id,
-        ])
+        self.trades_buffer.append(
+            [
+                dt,
+                trade.symbol,
+                trade.price,
+                trade.quantity,
+                trade.volume_usd,
+                1 if trade.is_buyer_maker else 0,
+                trade.trade_id,
+            ]
+        )
 
     def add_candle(self, candle: CandleData) -> None:
         """Agrega una vela completada al buffer de velas."""
         dt = datetime.fromtimestamp(candle.candle_time, tz=UTC)
-        self.candles_buffer.append([
-            dt,
-            candle.symbol,
-            candle.open,
-            candle.high,
-            candle.low,
-            candle.close,
-            candle.volume,
-            candle.volume_usd,
-            candle.vwap,
-            candle.trades_count,
-        ])
+        self.candles_buffer.append(
+            [
+                dt,
+                candle.symbol,
+                candle.open,
+                candle.high,
+                candle.low,
+                candle.close,
+                candle.volume,
+                candle.volume_usd,
+                candle.vwap,
+                candle.trades_count,
+            ]
+        )
 
     def add_whale(self, whale: WhaleAlert) -> None:
         """Agrega una alerta institucional al buffer de ballenas."""
         dt = datetime.fromtimestamp(whale.timestamp / 1000.0, tz=UTC)
-        self.whales_buffer.append([
-            dt,
-            whale.symbol,
-            whale.price,
-            whale.quantity,
-            whale.volume_usd,
-            1 if whale.is_buyer_maker else 0,
-            whale.trade_id,
-        ])
+        self.whales_buffer.append(
+            [
+                dt,
+                whale.symbol,
+                whale.price,
+                whale.quantity,
+                whale.volume_usd,
+                1 if whale.is_buyer_maker else 0,
+                whale.trade_id,
+            ]
+        )
 
     def should_flush(self, now: float) -> bool:
         """Evalúa si se debe realizar un flush por volumen o por intervalo de tiempo."""
