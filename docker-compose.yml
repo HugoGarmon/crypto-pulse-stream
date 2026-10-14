@@ -96,6 +96,8 @@ services:
       - .env
     environment:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+    volumes:
+      - ./services/producer/src:/app/src
     networks:
       - crypto_net
     depends_on:
@@ -117,6 +119,8 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: 8123
+    volumes:
+      - ./services/engine/src:/app/src
     networks:
       - crypto_net
     depends_on:
@@ -134,12 +138,15 @@ services:
       context: ./services/gateway
       dockerfile: Dockerfile
     container_name: crypto_gateway
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     env_file:
       - .env
     environment:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: 8123
+    volumes:
+      - ./services/gateway/src:/app/src
     ports:
       - "8000:8000"
     networks:
@@ -158,10 +165,19 @@ services:
     build:
       context: ./services/frontend
       dockerfile: Dockerfile
+      target: dev
     container_name: crypto_frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
       NEXT_PUBLIC_WS_URL: ws://localhost:8000
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./services/frontend/src:/app/src
+      - ./services/frontend/public:/app/public
+      - ./services/frontend/package.json:/app/package.json
+      - ./services/frontend/next.config.js:/app/next.config.js
+      - ./services/frontend/tailwind.config.js:/app/tailwind.config.js
+      - ./services/frontend/tsconfig.json:/app/tsconfig.json
     ports:
       - "3000:3000"
     networks:
